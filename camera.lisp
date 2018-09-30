@@ -1,0 +1,58 @@
+(in-package :crawl)
+
+
+(defclass camera (mob)
+  ((subject :initarg :subject :initform nil :accessor subject)
+   (margin :initarg :margin :initform (vec2 64 64) :accessor margin)
+   (viewport-size :initarg :viewport-size :initform (vec2 640 480) :accessor viewport-size))
+  )
+
+(defun intersect (a b)
+  (not (or (< (+ (x a) (z a)) (x b))
+           (< (+ (y a) (w a)) (y b))
+           (> (x a) (+ (x b) (z b)))
+           (> (y a) (+ (y b) (w b)))))
+  )
+
+(defun contains (a b)
+  (and (<= (x a) (x b))
+       (<= (y a) (y b))
+       (>= (+ (x a) (z a)) (+ (x b) (z b)))
+       (>= (+ (y a) (w a)) (+ (y b) (w b))))
+  )
+
+(defmethod viewport ((camera camera))
+  (with-accessors ((pos pos) (margin margin) (size viewport-size)) camera
+    (vec4 (+ (x margin) (x pos)) (+ (y margin) (y pos))
+        (- (x size) (* 2 (x margin))) (- (y size) (* 2 (y margin)))))
+  )
+
+(defmethod subject-in-view ((camera camera))
+  (contains (viewport camera) (hitbox (subject camera)))
+  )
+
+(defmethod pan-to-subject ((camera camera) ticks)
+  (with-accessors ((pos pos)) camera
+    (let* ((subject (hitbox (subject camera)))
+           (sx2 (+ (x subject) (z subject)))
+           (sy2 (+ (y subject) (w subject)))
+           (viewport (viewport camera))
+           (vx2 (+ (x viewport) (z viewport)))
+           (vy2 (+ (y viewport) (w viewport)))
+           )
+      (when (< (x subject) (x viewport))
+        (decf (x pos) (- (x viewport) (x subject))))
+      (when (< (y subject) (y viewport))
+        (decf (y pos) (- (y viewport) (y subject))))
+      (when (> sx2 vx2)
+        (incf (x pos) (- sx2 vx2)))
+      (when (> sy2 vy2)
+        (incf (y pos) (- sy2 vy2))))
+    (setf (x pos) (round (x pos)))
+    (setf (y pos) (round (y pos))))
+  )
+
+(defmethod update ((camera camera) ticks)
+  (if (not (subject-in-view camera))
+    (pan-to-subject camera ticks))
+  )

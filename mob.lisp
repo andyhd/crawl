@@ -1,0 +1,25 @@
+(in-package :crawl)
+
+(defclass mob ()
+  ((animations :initform nil :accessor animations)
+   (anim :initform nil :reader anim)
+   (pos :initform (vec2 0 0) :accessor pos)
+   (vx :initform 0.0 :accessor vx)
+   (vy :initform 0.0 :accessor vy))
+  )
+
+(defgeneric (setf anim) (value mob)
+  (:method (value (mob mob))
+    (setf (slot-value mob 'anim)
+          (eval (getf (slot-value mob 'animations) value)))
+    (setf (anim-timer (anim mob)) 0))
+  )
+
+(defmethod draw-mob ((mob mob))
+  (draw-anim (anim mob) (pos mob))
+  )
+
+(defmethod hitbox ((mob mob))
+  (let ((frame (anim-frame (anim mob))))
+    (vec4 (x (pos mob)) (y (pos mob)) (frame-width frame) (frame-height frame)))
+  )
